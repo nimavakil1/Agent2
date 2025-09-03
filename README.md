@@ -28,6 +28,9 @@ A clean baseline to validate provider keys and confirm your exact ElevenLabs voi
 - TTS latency per language (saves `out-<lang>.mp3`):
   - `uv run --env-file .env python scripts/tts_benchmark.py --langs en,fr,de,nl --runs 1`
   - Output shows per-language duration (ms) and total.
+- Streaming TTS latency (TTFT + total) per language (saves `out-stream-<lang>.mp3`):
+  - `uv run --env-file .env python scripts/stream_tts_benchmark.py --langs en,fr,de,nl --runs 3`
+  - Reports Time-To-First-Byte (approx TTFT) and total generation time.
 - LLM latency (Groq) quick benchmark:
   - `uv run --env-file .env python scripts/llm_benchmark.py --runs 5`
   - Prints min/avg/max latency for a short prompt.
