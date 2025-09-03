@@ -7,7 +7,8 @@ import httpx
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import Agent
-from livekit.plugins import deepgram, elevenlabs, groq
+from livekit.plugins import deepgram, elevenlabs
+from livekit.plugins import openai as openai_llm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("agent2")
@@ -47,7 +48,12 @@ async def run(lang: str):
             api_key=os.getenv("DEEPGRAM_API_KEY"),
             http_session=http,
         ),
-        llm=groq.LLM(model=os.getenv("GROQ_MODEL", "llama3-70b-8192"), temperature=0.4),
+        # TEMP: switch LLM to OpenAI to rule out LLM affecting voice behavior
+        llm=openai_llm.LLM(
+            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+            api_key=os.getenv("OPENAI_API_KEY"),
+            temperature=0.4,
+        ),
         tts=elevenlabs.TTS(
             model="eleven_flash_v2",
             api_key=os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY"),
