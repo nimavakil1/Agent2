@@ -7,6 +7,7 @@ import httpx
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import Agent
+from livekit.agents import vad as lk_vad
 from livekit.plugins import deepgram, elevenlabs
 from livekit.plugins import openai as openai_llm
 
@@ -38,6 +39,14 @@ async def run(lang: str):
     # Create an HTTP session because we're not running under the worker context
     http = aiohttp.ClientSession()
 
+    # Instantiate a VAD for talk-over/interruptions (WebRTC if available)
+    vad_inst = None
+    try:
+        # Prefer WebRTC VAD if present; fallback is None (library still runs)
+        vad_inst = getattr(lk_vad, "WebRTC", None)() if getattr(lk_vad, "WebRTC", None) else None
+    except Exception:
+        vad_inst = None
+
     session = agents.AgentSession(
         stt=deepgram.STT(
             model="nova-2",
@@ -60,6 +69,7 @@ async def run(lang: str):
             http_session=http,
         ),
         preemptive_generation=True,
+        vad=vad_inst,
     )
 
     # Choose voice: env override (from UI) takes precedence, then per-language mapping
