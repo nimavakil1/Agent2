@@ -36,6 +36,11 @@ async def run(lang: str):
     room = rtc.Room()
     await room.connect(url, room_token)
 
+    # Choose voice id up-front and expose via env for plugins that read it at init
+    sel_voice_id = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
+    if sel_voice_id:
+        os.environ["ELEVENLABS_VOICE_ID"] = sel_voice_id
+
     # Create an HTTP session because we're not running under the worker context
     http = aiohttp.ClientSession()
 
@@ -73,7 +78,7 @@ async def run(lang: str):
     )
 
     # Choose voice: env override (from UI) takes precedence, then per-language mapping
-    voice_id = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
+    voice_id = os.getenv("ELEVENLABS_VOICE_ID") or sel_voice_id
     if voice_id:
         # Resolve voice name from ElevenLabs API to satisfy plugins expecting names
         voice_name = None
