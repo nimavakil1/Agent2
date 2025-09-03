@@ -58,14 +58,27 @@ async def run(lang: str):
     # Choose voice: env override (from UI) takes precedence, then per-language mapping
     voice = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
     if voice:
+        # Try both properties (some plugin versions expect name vs id)
+        tts = session.tts
+        ok_any = False
         try:
-            session.tts.voice = voice  # type: ignore[attr-defined]
-            logger.info("Selected TTS voice=%s for lang=%s", voice, lang)
+            tts.voice = voice  # type: ignore[attr-defined]
+            ok_any = True
+            logger.info("Applied TTS voice via .voice=%s", voice)
         except Exception as e:
-            logger.warning("Failed to set TTS voice: %s", e)
+            logger.warning("Setting .voice failed: %s", e)
+        try:
+            setattr(tts, "voice_id", voice)  # type: ignore[attr-defined]
+            ok_any = True
+            logger.info("Applied TTS voice via .voice_id=%s", voice)
+        except Exception as e:
+            logger.warning("Setting .voice_id failed: %s", e)
+        logger.info("Selected TTS voice=%s for lang=%s (ok_any=%s)", voice, lang, ok_any)
 
     agent = Agent(instructions=f"Always answer in {lang} with short, fast answers.")
     await session.start(room=room, agent=agent)
+    # Emit a short, fixed phrase so you can verify the actual voice by ear
+    session.generate_reply(instructions="Voice check: This is the configured ElevenLabs voice speaking.")
 
     logger.info("Agent2 minimal started. Speak in LiveKit room.")
     try:
