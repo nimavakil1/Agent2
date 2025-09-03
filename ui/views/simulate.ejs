@@ -49,11 +49,18 @@
         room = new LK.Room({ adaptiveStream:true, dynacast:true, disconnectOnPageLeave:true });
         room.on(LK.RoomEvent.Connected, ()=> setStatus('Connected; publishing mic...'));
         room.on(LK.RoomEvent.Disconnected, ()=> setStatus('Disconnected'));
-        room.on(LK.RoomEvent.TrackSubscribed, (track)=>{
-          if (track && track.kind === 'audio'){
-            const el = document.getElementById('audio-el');
-            track.attach(el); el.play().catch(()=>{});
-            setStatus('Mic on. Speak to test latency.');
+        room.on(LK.RoomEvent.TrackSubscribed, (track, publication, participant)=>{
+          try {
+            const pid = String((participant && participant.identity) || '');
+            if (track && track.kind === 'audio' && pid.startsWith('agent-')){
+              const el = document.getElementById('audio-el');
+              track.attach(el); el.play().catch(()=>{});
+              setStatus(`Playing agent audio from ${pid}. Mic on. Speak to test latency.`);
+            } else {
+              console.log('Ignoring audio from participant', pid);
+            }
+          } catch (e) {
+            console.error('attach audio failed', e);
           }
         });
 
