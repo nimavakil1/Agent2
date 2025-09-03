@@ -21,7 +21,8 @@ def _voice_map_from_env():
 
 
 async def run(lang: str):
-    load_dotenv(".env", override=True)
+    # Load .env without overriding values passed from the UI (e.g., ELEVENLABS_VOICE_ID)
+    load_dotenv(".env", override=False)
 
     url = os.getenv("LIVEKIT_URL")
     room_token = os.getenv("AGENT_ROOM_TOKEN")
@@ -48,8 +49,8 @@ async def run(lang: str):
         preemptive_generation=True,
     )
 
-    # Choose voice: env override takes precedence, then per-language mapping
-    voice = os.getenv("ELEVENLABS_VOICE_ID") or _voice_map_from_env().get(lang)
+    # Choose voice: env override (from UI) takes precedence, then per-language mapping
+    voice = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
     if voice:
         try:
             session.tts.voice = voice  # type: ignore[attr-defined]
