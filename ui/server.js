@@ -38,6 +38,23 @@ function startAgent(agentToken, langCode) {
   }
   const cmd = `cd ${rootDir} && $(command -v uv) run --env-file .env python -m src.agent --lang ${langCode || 'en'}`;
   const env = { ...process.env, AGENT_ROOM_TOKEN: agentToken };
+  // Select ElevenLabs voice per language and pass via ELEVENLABS_VOICE_ID
+  const voices = {
+    en: process.env.ELEVENLABS_VOICE_EN,
+    fr: process.env.ELEVENLABS_VOICE_FR_BE,
+    de: process.env.ELEVENLABS_VOICE_DE_DE,
+    nl_BE: process.env.ELEVENLABS_VOICE_NL_BE,
+    nl_NL: process.env.ELEVENLABS_VOICE_NL_NL,
+  };
+  let selectedVoice = null;
+  if (langCode === 'en') selectedVoice = voices.en || null;
+  else if (langCode === 'fr') selectedVoice = voices.fr || null;
+  else if (langCode === 'de') selectedVoice = voices.de || null;
+  else if (langCode === 'nl') selectedVoice = voices.nl_BE || voices.nl_NL || null;
+  if (selectedVoice) {
+    env.ELEVENLABS_VOICE_ID = selectedVoice;
+    console.log('[ui] Using ElevenLabs voice', selectedVoice, 'for lang', langCode);
+  }
   agentProc = spawn('/bin/bash', ['-lc', cmd], { stdio: 'inherit', env });
   agentInfo.lang = langCode || 'en';
   agentProc.on('exit', () => { agentProc = null; agentInfo.lang = null; });
@@ -104,4 +121,3 @@ app.post('/api/simulate/start', (req, res) => {
 app.listen(port, () => {
   console.log(`UI listening on http://localhost:${port}`);
 });
-

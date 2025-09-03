@@ -48,7 +48,8 @@ async def run(lang: str):
         preemptive_generation=True,
     )
 
-    voice = _voice_map_from_env().get(lang)
+    # Choose voice: env override takes precedence, then per-language mapping
+    voice = os.getenv("ELEVENLABS_VOICE_ID") or _voice_map_from_env().get(lang)
     if voice:
         try:
             session.tts.voice = voice  # type: ignore[attr-defined]
