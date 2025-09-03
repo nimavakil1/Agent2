@@ -53,47 +53,55 @@ async def ensure_input_mp3(client: httpx.AsyncClient, lang: str) -> Path:
     return out
 
 async def stt_deepgram_stream(mp3_path: Path, lang: str) -> tuple[float, float, str]:
-    """Stream mp3 to Deepgram WS, return (ttft_ms, total_ms, transcript)."""
-    url = f"wss://api.deepgram.com/v1/listen?model=nova-2&language={lang}&interim_results=true&smart_format=false&encoding=mp3"
-    headers = {"Authorization": f"Token {DG}"}
-    ttft = None
-    t0 = time.perf_counter()
-    transcript = ""
-    async with aiohttp.ClientSession() as session:
-        async with session.ws_connect(url, headers=headers, timeout=30) as ws:
-            # send audio in chunks
-            data = mp3_path.read_bytes()
-            chunk = 32_000  # bytes
-            for i in range(0, len(data), chunk):
-                await ws.send_bytes(data[i : i + chunk])
-            await ws.send_json({"type": "CloseStream"})
+    """Stream mp3 to Deepgram WS, return (ttft_ms, total_ms, transcript).
 
-            async for msg in ws:
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    try:
-                        evt = json.loads(msg.data)
-                    except Exception:
-                        continue
-                    # look for transcript in channel alternatives
-                    ch = (evt.get("channel") or {})
-                    alt = (ch.get("alternatives") or [{}])[0]
-                    text = alt.get("transcript") or ""
-                    is_final = bool((evt.get("is_final") or False))
-                    if text:
-                        transcript = text
-                        if ttft is None:
-                            ttft = (time.perf_counter() - t0) * 1000
-                        if is_final:
-                            total = (time.perf_counter() - t0) * 1000
-                            return ttft, total, transcript
-                elif msg.type == aiohttp.WSMsgType.BINARY:
-                    # ignore
-                    pass
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    break
-    # fallback if no final
-    total = (time.perf_counter() - t0) * 1000
-    return ttft or total, total, transcript
+    Some environments require passing the API key via Sec-WebSocket-Protocol ("token, <key>").
+    We'll try standard Authorization header first, then retry with protocols.
+    """
+    base_qs = f"model=nova-2&language={lang}&interim_results=true&smart_format=false&endpointing=20"
+    url = f"wss://api.deepgram.com/v1/listen?{base_qs}"
+
+    async def _run_ws(headers=None, protocols=None):
+        nonlocal url
+        ttft = None
+        t0 = time.perf_counter()
+        transcript = ""
+        async with aiohttp.ClientSession() as session:
+            async with session.ws_connect(url, headers=headers, protocols=protocols, timeout=30) as ws:
+                data = mp3_path.read_bytes()
+                chunk = 32_000
+                for i in range(0, len(data), chunk):
+                    await ws.send_bytes(data[i : i + chunk])
+                await ws.send_json({"type": "CloseStream"})
+
+                async for msg in ws:
+                    if msg.type == aiohttp.WSMsgType.TEXT:
+                        try:
+                            evt = json.loads(msg.data)
+                        except Exception:
+                            continue
+                        ch = (evt.get("channel") or {})
+                        alt = (ch.get("alternatives") or [{}])[0]
+                        text = alt.get("transcript") or ""
+                        is_final = bool((evt.get("is_final") or False))
+                        if text:
+                            transcript = text
+                            if ttft is None:
+                                ttft = (time.perf_counter() - t0) * 1000
+                            if is_final:
+                                total = (time.perf_counter() - t0) * 1000
+                                return ttft, total, transcript
+                    elif msg.type == aiohttp.WSMsgType.ERROR:
+                        break
+        total = (time.perf_counter() - t0) * 1000
+        return ttft or total, total, transcript
+
+    # Try with Authorization header
+    try:
+        return await _run_ws(headers={"Authorization": f"Token {DG}"})
+    except aiohttp.WSServerHandshakeError:
+        # Retry using subprotocol form required by some clients/envs
+        return await _run_ws(protocols=["token", DG])
 
 async def llm_groq_stream(client: httpx.AsyncClient, prompt: str) -> tuple[float, float, str]:
     """Stream Groq chat completions, return (ttft_ms, total_ms, text)."""
