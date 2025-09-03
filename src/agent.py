@@ -3,6 +3,7 @@ import os
 import asyncio
 import logging
 import aiohttp
+import httpx
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import Agent
@@ -56,24 +57,43 @@ async def run(lang: str):
     )
 
     # Choose voice: env override (from UI) takes precedence, then per-language mapping
-    voice = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
-    if voice:
-        # Try both properties (some plugin versions expect name vs id)
+    voice_id = (os.getenv("ELEVENLABS_VOICE_ID") or "").strip() or _voice_map_from_env().get(lang)
+    if voice_id:
+        # Resolve voice name from ElevenLabs API to satisfy plugins expecting names
+        voice_name = None
+        el_key = os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY")
+        el_base = (os.getenv("ELEVENLABS_BASE_URL") or "https://api.elevenlabs.io").rstrip("/")
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as hc:
+                r = await hc.get(f"{el_base}/v1/voices", headers={"xi-api-key": el_key or ""})
+                if r.status_code == 200:
+                    js = r.json();
+                    for v in js.get("voices", []):
+                        if v.get("voice_id") == voice_id:
+                            voice_name = v.get("name"); break
+        except Exception as e:
+            logger.warning("Failed to resolve ElevenLabs voice name: %s", e)
+
         tts = session.tts
-        ok_any = False
+        applied = []
+        # Try setting by name first (if found), then by id, then id property
+        if voice_name:
+            try:
+                tts.voice = voice_name  # type: ignore[attr-defined]
+                applied.append(f"voice(name)={voice_name}")
+            except Exception as e:
+                logger.warning("Setting .voice(name) failed: %s", e)
         try:
-            tts.voice = voice  # type: ignore[attr-defined]
-            ok_any = True
-            logger.info("Applied TTS voice via .voice=%s", voice)
+            tts.voice = voice_id  # type: ignore[attr-defined]
+            applied.append(f"voice(id)={voice_id}")
         except Exception as e:
-            logger.warning("Setting .voice failed: %s", e)
+            logger.warning("Setting .voice(id) failed: %s", e)
         try:
-            setattr(tts, "voice_id", voice)  # type: ignore[attr-defined]
-            ok_any = True
-            logger.info("Applied TTS voice via .voice_id=%s", voice)
+            setattr(tts, "voice_id", voice_id)  # type: ignore[attr-defined]
+            applied.append(f"voice_id={voice_id}")
         except Exception as e:
-            logger.warning("Setting .voice_id failed: %s", e)
-        logger.info("Selected TTS voice=%s for lang=%s (ok_any=%s)", voice, lang, ok_any)
+            logger.warning("Setting .voice_id property failed: %s", e)
+        logger.info("Selected TTS voice id=%s name=%s for lang=%s (applied=%s)", voice_id, voice_name, lang, ",".join(applied) or "none")
 
     agent = Agent(instructions=f"Always answer in {lang} with short, fast answers.")
     await session.start(room=room, agent=agent)
