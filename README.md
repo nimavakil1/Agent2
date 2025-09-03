@@ -45,3 +45,21 @@ A clean baseline to validate provider keys and confirm your exact ElevenLabs voi
 - Note: the LiveKit ElevenLabs plugin may not expose a base URL toggle. If needed, we will upgrade or patch to support EU endpoints for the agent path.
 
 Tip: ensure every voice ID is in your ElevenLabs “My Voices”, or the TTS calls will fail.
+
+## Minimal Live Test (Mic → Agent → Voice)
+Run a tiny UI to mint a LiveKit token, capture your microphone, and spawn the minimal agent for true end‑to‑end streaming latency.
+
+1) Start the UI
+   - `cd ui && npm ci && node server.js`
+   - Server prints: `UI listening on http://localhost:3001`
+2) Open the simulator
+   - On the server: `curl http://localhost:3001/health` should return `OK`.
+   - From your laptop: `http://YOUR_SERVER_IP:3001/simulate` (use http, not https).
+   - Or SSH tunnel: `ssh -N -L 9301:localhost:3001 ubuntu@YOUR_SERVER` then open `http://localhost:9301/simulate`.
+3) Click Start (English/French/German/Dutch)
+   - UI mints a browser token and an agent token, starts the agent with the selected language, and connects your mic.
+   - You should hear the voice you configured in `.env`.
+
+Requirements
+- `.env` must contain correct LiveKit credentials: `LIVEKIT_URL`, `LIVEKIT_API_KEY`, `LIVEKIT_API_SECRET`.
+- ElevenLabs voices must be in “My Voices”.
