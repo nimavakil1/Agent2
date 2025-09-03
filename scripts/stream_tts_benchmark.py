@@ -28,7 +28,7 @@ langs = [s.strip() for s in args.langs.split(",") if s.strip()]
 async def synth_stream(client: httpx.AsyncClient, voice_id: str, text: str, out: Path):
     url = f"{EL_BASE}/v1/text-to-speech/{voice_id}/stream"
     headers = {"xi-api-key": EL, "accept": "audio/mpeg", "content-type": "application/json"}
-    payload = {"text": text, "model_id": "eleven_flash_v2"}
+    payload = {"text": text, "model_id": "eleven_flash_v2", "optimize_streaming_latency": 2}
 
     t0 = time.perf_counter()
     ttft = None

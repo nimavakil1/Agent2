@@ -43,6 +43,11 @@ async def ensure_input_mp3(client: httpx.AsyncClient, lang: str) -> Path:
         return out
     voice = voices.get(lang) or voices.get("en")
     text = LANG_TEXT.get(lang, LANG_TEXT["en"])
+    # Reuse an existing streaming output if present to avoid regen
+    reuse = ROOT / f"out-stream-{lang}.mp3"
+    if reuse.exists():
+        out.write_bytes(reuse.read_bytes())
+        return out
     r = await client.post(
         f"{EL_BASE}/v1/text-to-speech/{voice}",
         headers={"xi-api-key": EL, "accept": "audio/mpeg", "content-type": "application/json"},
@@ -69,9 +74,11 @@ async def stt_deepgram_stream(mp3_path: Path, lang: str) -> tuple[float, float, 
         async with aiohttp.ClientSession() as session:
             async with session.ws_connect(url, headers=headers, protocols=protocols, timeout=30) as ws:
                 data = mp3_path.read_bytes()
-                chunk = 32_000
+                # Use small chunks with tiny sleeps to simulate real-time
+                chunk = 4096
                 for i in range(0, len(data), chunk):
                     await ws.send_bytes(data[i : i + chunk])
+                    await aiohttp.asyncio.sleep(0.01)
                 await ws.send_json({"type": "CloseStream"})
 
                 async for msg in ws:
@@ -142,7 +149,7 @@ async def llm_groq_stream(client: httpx.AsyncClient, prompt: str) -> tuple[float
 async def tts_stream(client: httpx.AsyncClient, voice_id: str, text: str, out_path: Path) -> tuple[float, float]:
     url = f"{EL_BASE}/v1/text-to-speech/{voice_id}/stream"
     headers = {"xi-api-key": EL, "accept": "audio/mpeg", "content-type": "application/json"}
-    payload = {"text": text, "model_id": "eleven_flash_v2"}
+    payload = {"text": text, "model_id": "eleven_flash_v2", "optimize_streaming_latency": 2}
     t0 = time.perf_counter()
     ttft = None
     async with client.stream("POST", url, headers=headers, json=payload) as resp:
