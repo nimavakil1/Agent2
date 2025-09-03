@@ -2,6 +2,7 @@ import argparse
 import os
 import asyncio
 import logging
+import aiohttp
 from dotenv import load_dotenv
 from livekit import agents, rtc
 from livekit.agents import Agent
@@ -32,6 +33,9 @@ async def run(lang: str):
     room = rtc.Room()
     await room.connect(url, room_token)
 
+    # Create an HTTP session because we're not running under the worker context
+    http = aiohttp.ClientSession()
+
     session = agents.AgentSession(
         stt=deepgram.STT(
             model="nova-2",
@@ -40,11 +44,13 @@ async def run(lang: str):
             smart_format=True,
             interim_results=True,
             api_key=os.getenv("DEEPGRAM_API_KEY"),
+            http_session=http,
         ),
         llm=groq.LLM(model=os.getenv("GROQ_MODEL", "llama3-70b-8192"), temperature=0.4),
         tts=elevenlabs.TTS(
             model="eleven_flash_v2",
             api_key=os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY"),
+            http_session=http,
         ),
         preemptive_generation=True,
     )
@@ -67,6 +73,8 @@ async def run(lang: str):
             await asyncio.sleep(3600)
     except asyncio.CancelledError:
         pass
+    finally:
+        await http.close()
 
 
 if __name__ == "__main__":
