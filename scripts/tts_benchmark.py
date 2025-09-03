@@ -9,6 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 load_dotenv(ROOT / ".env", override=True)
 
 EL = os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY")
+EL_BASE = os.getenv("ELEVENLABS_BASE_URL", "https://api.elevenlabs.io").rstrip("/")
 voices = {
     "en": os.getenv("ELEVENLABS_VOICE_EN"),
     "fr": os.getenv("ELEVENLABS_VOICE_FR_BE"),
@@ -27,7 +28,7 @@ langs = [s.strip() for s in args.langs.split(",") if s.strip()]
 async def synth(client: httpx.AsyncClient, voice_id: str, text: str, out: Path):
     t0 = time.perf_counter()
     r = await client.post(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}",
+        f"{EL_BASE}/v1/text-to-speech/{voice_id}",
         headers={"xi-api-key": EL, "accept": "audio/mpeg", "content-type": "application/json"},
         json={"text": text, "model_id": "eleven_flash_v2"},
     )

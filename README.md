@@ -32,4 +32,10 @@ A clean baseline to validate provider keys and confirm your exact ElevenLabs voi
   - `uv run --env-file .env python scripts/llm_benchmark.py --runs 5`
   - Prints min/avg/max latency for a short prompt.
 
+### EU Region
+- To use ElevenLabs EU servers, set in `.env`:
+  - `ELEVENLABS_BASE_URL=https://api.eu.elevenlabs.io`
+- The smoke and benchmark scripts will use this base URL.
+- Note: the LiveKit ElevenLabs plugin may not expose a base URL toggle. If needed, we will upgrade or patch to support EU endpoints for the agent path.
+
 Tip: ensure every voice ID is in your ElevenLabs “My Voices”, or the TTS calls will fail.

@@ -11,6 +11,7 @@ load_dotenv(ROOT / ".env", override=True)
 
 DG = os.getenv("DEEPGRAM_API_KEY")
 EL = os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY")
+EL_BASE = os.getenv("ELEVENLABS_BASE_URL", "https://api.elevenlabs.io").rstrip("/")
 GQ = os.getenv("GROQ_API_KEY")
 
 voices = {
@@ -52,12 +53,12 @@ async def main():
             print("ElevenLabs: missing key")
         else:
             u = await client.get(
-                "https://api.elevenlabs.io/v1/user",
+                f"{EL_BASE}/v1/user",
                 headers={"xi-api-key": EL},
             )
             print("ElevenLabs:", u.status_code)
             v = await client.get(
-                "https://api.elevenlabs.io/v1/voices",
+                f"{EL_BASE}/v1/voices",
                 headers={"xi-api-key": EL},
             )
             data = v.json()
@@ -76,7 +77,7 @@ async def main():
             # TTS dry-run: synthesize to WAV file
             text = f"This is a quick test in {lang}. Your selected voice should play."
             tts = await client.post(
-                f"https://api.elevenlabs.io/v1/text-to-speech/{chosen}",
+                f"{EL_BASE}/v1/text-to-speech/{chosen}",
                 headers={"xi-api-key": EL, "accept": "audio/mpeg", "content-type": "application/json"},
                 json={"text": text, "model_id": "eleven_flash_v2"},
             )
