@@ -78,7 +78,8 @@ async def stt_deepgram_stream(mp3_path: Path, lang: str) -> tuple[float, float, 
                 chunk = 4096
                 for i in range(0, len(data), chunk):
                     await ws.send_bytes(data[i : i + chunk])
-                    await aiohttp.asyncio.sleep(0.01)
+                    import asyncio as _asyncio
+                    await _asyncio.sleep(0.01)
                 await ws.send_json({"type": "CloseStream"})
 
                 async for msg in ws:
