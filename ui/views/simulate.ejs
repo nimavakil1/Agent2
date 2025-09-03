@@ -23,8 +23,15 @@
       <button class="btn btn-primary" onclick="start('nl')">Start (Dutch)</button>
       <button class="btn btn-outline-secondary" onclick="stopAgent()">Stop Agent</button>
     </div>
+    <div class="d-flex gap-2 flex-wrap mb-3">
+      <button class="btn btn-outline-primary" onclick="voiceCheck('en')">Test EN voice</button>
+      <button class="btn btn-outline-primary" onclick="voiceCheck('fr')">Test FR voice</button>
+      <button class="btn btn-outline-primary" onclick="voiceCheck('de')">Test DE voice</button>
+      <button class="btn btn-outline-primary" onclick="voiceCheck('nl')">Test NL voice</button>
+    </div>
     <div class="status" id="status">Idle</div>
     <audio id="audio-el"></audio>
+    <audio id="check-el"></audio>
   </div>
 
   <script>
@@ -75,6 +82,20 @@
     async function stopAgent(){
       try { await fetch('/api/agent/stop', { method:'POST' }); setStatus('Agent stop requested'); } catch {}
       try { if (room) { await room.disconnect(); room = null; } } catch {}
+    }
+
+    async function voiceCheck(lang){
+      try {
+        setStatus('Fetching voice check…');
+        const r = await fetch('/api/voice-check?lang=' + encodeURIComponent(lang));
+        if (!r.ok) { setStatus('Voice check failed: ' + (await r.text())); return; }
+        const buf = await r.arrayBuffer();
+        const blob = new Blob([buf], { type:'audio/mpeg' });
+        const url = URL.createObjectURL(blob);
+        const el = document.getElementById('check-el');
+        el.src = url; await el.play();
+        setStatus('Playing voice check (' + lang + ')');
+      } catch (e){ setStatus('Voice check error: ' + (e?.message||e)); }
     }
   </script>
 </body>

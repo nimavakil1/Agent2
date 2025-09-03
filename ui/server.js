@@ -118,6 +118,38 @@ app.post('/api/simulate/start', (req, res) => {
   }
 });
 
+// Voice-check: synth a short sample with ElevenLabs REST for the selected language
+app.get('/api/voice-check', async (req, res) => {
+  try {
+    const lang = String(req.query.lang || 'en').toLowerCase();
+    const ek = process.env.ELEVENLABS_API_KEY || process.env.ELEVEN_API_KEY;
+    if (!ek) return res.status(400).send('missing ELEVENLABS_API_KEY');
+    const voices = {
+      en: process.env.ELEVENLABS_VOICE_EN,
+      fr: process.env.ELEVENLABS_VOICE_FR_BE,
+      de: process.env.ELEVENLABS_VOICE_DE_DE,
+      nl: process.env.ELEVENLABS_VOICE_NL_BE || process.env.ELEVENLABS_VOICE_NL_NL,
+    };
+    const voiceId = voices[lang] || voices.en;
+    if (!voiceId) return res.status(400).send('voice id not configured');
+    const base = (process.env.ELEVENLABS_BASE_URL || 'https://api.elevenlabs.io').replace(/\/$/, '');
+    const text = `Voice check in ${lang}. This should be the configured ElevenLabs voice.`;
+    const r = await fetch(`${base}/v1/text-to-speech/${voiceId}`, {
+      method: 'POST',
+      headers: { 'xi-api-key': ek, accept: 'audio/mpeg', 'content-type': 'application/json' },
+      body: JSON.stringify({ text, model_id: 'eleven_flash_v2' }),
+    });
+    if (!r.ok) {
+      const t = await r.text();
+      return res.status(502).send(`elevenlabs error ${r.status}: ${t.slice(0,200)}`);
+    }
+    res.setHeader('content-type', 'audio/mpeg');
+    res.send(Buffer.from(await r.arrayBuffer()));
+  } catch (e) {
+    res.status(500).send(String(e?.message || e));
+  }
+});
+
 app.listen(port, () => {
   console.log(`UI listening on http://localhost:${port}`);
 });
