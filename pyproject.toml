@@ -5,7 +5,9 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agent2"
 version = "0.1.0"
-requires-python = ">=3.10"
+# Limit to <3.13 so the resolver doesn't try to satisfy dependencies for 3.13
+# (some plugins currently don't publish wheels for 3.13).
+requires-python = ">=3.10,<3.13"
 description = "Minimal, stable baseline for LiveKit agent with provider checks and TTS dry-run"
 
 dependencies = [
