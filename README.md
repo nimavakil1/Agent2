@@ -31,6 +31,9 @@ A clean baseline to validate provider keys and confirm your exact ElevenLabs voi
 - Streaming TTS latency (TTFT + total) per language (saves `out-stream-<lang>.mp3`):
   - `uv run --env-file .env python scripts/stream_tts_benchmark.py --langs en,fr,de,nl --runs 3`
   - Reports Time-To-First-Byte (approx TTFT) and total generation time.
+- End-to-end pipeline (STT→LLM→streaming TTS) latency:
+  - `uv run --env-file .env python scripts/pipeline_benchmark.py --lang en --runs 3`
+  - Measures STT (Deepgram REST), LLM (Groq), and streaming TTS (ElevenLabs) times, and writes `out-pipeline-<lang>.mp3`.
 - LLM latency (Groq) quick benchmark:
   - `uv run --env-file .env python scripts/llm_benchmark.py --runs 5`
   - Prints min/avg/max latency for a short prompt.
