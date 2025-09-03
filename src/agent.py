@@ -52,6 +52,14 @@ async def run(lang: str):
     except Exception:
         vad_inst = None
 
+    # Create ElevenLabs TTS instance and verify it's the right type
+    elevenlabs_tts = elevenlabs.TTS(
+        model="eleven_flash_v2",
+        api_key=os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY"),
+        http_session=http,
+    )
+    logger.info("TTS instance created: %s", type(elevenlabs_tts))
+    
     session = agents.AgentSession(
         stt=deepgram.STT(
             model="nova-2",
@@ -68,11 +76,7 @@ async def run(lang: str):
             api_key=os.getenv("OPENAI_API_KEY"),
             temperature=0.4,
         ),
-        tts=elevenlabs.TTS(
-            model="eleven_flash_v2",
-            api_key=os.getenv("ELEVENLABS_API_KEY") or os.getenv("ELEVEN_API_KEY"),
-            http_session=http,
-        ),
+        tts=elevenlabs_tts,
         preemptive_generation=True,
         vad=vad_inst,
     )
@@ -96,6 +100,13 @@ async def run(lang: str):
             logger.warning("Failed to resolve ElevenLabs voice name: %s", e)
 
         tts = session.tts
+        logger.info("Session TTS instance: %s", type(tts))
+        
+        # Verify we're still using ElevenLabs TTS
+        if "elevenlabs" not in str(type(tts)).lower():
+            logger.error("WARNING: TTS instance is not ElevenLabs! Type: %s", type(tts))
+            raise RuntimeError(f"Expected ElevenLabs TTS, got {type(tts)}")
+        
         applied = []
         # Try setting by name first (if found), then by id, then id property
         if voice_name:

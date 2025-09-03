@@ -1,0 +1,15 @@
+Metadata-Version: 2.4
+Name: agent2
+Version: 0.1.0
+Summary: Minimal, stable baseline for LiveKit agent with provider checks and TTS dry-run
+Requires-Python: >=3.10
+Requires-Dist: python-dotenv>=1.0.1
+Requires-Dist: httpx>=0.27.2
+Requires-Dist: aiohttp>=3.9
+Requires-Dist: livekit-agents~=1.2
+Requires-Dist: livekit-plugins-groq~=1.2
+Requires-Dist: livekit-plugins-deepgram>=1.2.6
+Requires-Dist: livekit-plugins-elevenlabs>=1.2.6
+Requires-Dist: livekit-plugins-turn-detector~=1.2
+Requires-Dist: livekit-plugins-silero~=1.2
+Requires-Dist: webrtcvad>=2.0.10
